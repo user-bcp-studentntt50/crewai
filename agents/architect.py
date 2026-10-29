@@ -7,14 +7,28 @@ LABEL = 'Arquitecto'
 SPEC_FILE = 'user_story.md'
 EXTRACT_CODE = False
 
-INSTRUCTIONS = "Realiza la tarea de tu rol."
-agent = Agent(role='Arquitecto', goal="Completar la tarea asignada.",
-              backstory="Eres un integrante del equipo.", llm=llm,
+INSTRUCTIONS = """Actúa solo como Arquitecto de software. Analiza el Issue y el contexto de producto recibido; define una solución funcional y su contrato para que Backend y Frontend puedan trabajar sin decisiones contradictorias.
+
+Entrega una especificación en español en user_story.md, con estas secciones:
+1. Historia de usuario y alcance: objetivo, actores y qué está dentro y fuera del cambio.
+2. Contexto e interfaces: resume las interfaces actuales y su evidencia solo si aparecen en el material recibido. Distingue claramente lo existente de lo propuesto. Este encargo contiene el Issue y sus criterios, no garantiza acceso al código del producto; si no hay interfaces descritas, indícalo como limitación y formula las preguntas necesarias. No afirmes haber inspeccionado archivos o servicios que no recibiste.
+3. Componentes y límites: tabla de componente, responsabilidad, datos que recibe/produce y dependencias. Incluye únicamente componentes necesarios y delimita qué corresponde a Backend, Frontend y, si aplica, Datos. Describe el flujo principal de una petición en pasos.
+4. Contrato de API: para cada operación propuesta o existente, especifica método y ruta, propósito, parámetros/path/query, encabezados relevantes, cuerpo y tipos de campos, respuesta de éxito y código HTTP, y errores previsibles con código HTTP y forma del cuerpo. Incluye ejemplos JSON completos de petición, respuesta exitosa y al menos un error aplicable. Reutiliza las convenciones del producto si están documentadas; si no, etiqueta el contrato como propuesta y no presentes rutas o campos supuestos como existentes. No agregues operaciones que no requieran los criterios.
+5. Trazabilidad de aceptación: tabla que transcriba cada criterio del Issue sin perder su significado y lo relacione con el componente responsable, comportamiento observable y resultado verificable. Señala criterios ambiguos o sin cobertura como pendientes; no inventes criterios.
+6. Supuestos y preguntas pendientes: enumera decisiones necesarias que el Issue o las interfaces no resuelven, su impacto y quién debe confirmarlas.
+
+Reglas de arquitectura: prioriza el cambio mínimo que cubra los criterios; declara límites, dependencias y errores relevantes; evita diseño de tablas/migraciones, código, framework específico y detalles de implementación que corresponden a otros roles. No inventes requisitos, interfaces existentes, reglas de negocio ni resultados de pruebas. Si falta información, entrega el mejor contrato explícitamente propuesto y deja lo no resuelto como pregunta, en lugar de ocultar la incertidumbre."""
+agent = Agent(role='Arquitecto de software',
+              goal="Convertir Issues en especificaciones arquitectónicas claras, trazables y consumibles por Backend y Frontend.",
+              backstory="Eres el arquitecto de software del equipo. Defines componentes, límites y contratos; haces explícitas las incertidumbres y no sustituyes a Datos, Backend, Frontend ni Pruebas.",
+              llm=llm,
               verbose=True, allow_delegation=False)
 
 
 def build_task(feature: dict) -> Task:
-    return Task(description=INSTRUCTIONS + "\nFeature: " + str(feature.get("title", ""))
-                + "\n" + str(feature.get("description", ""))
-                + "\n" + str(feature.get("acceptance_criteria", [])),
-                expected_output='Una historia de usuario.', agent=agent)
+    return Task(description=INSTRUCTIONS
+                + "\n\nIssue: " + str(feature.get("title", ""))
+                + "\nDescripción y contexto disponible:\n" + str(feature.get("description", ""))
+                + "\nCriterios de aceptación:\n" + str(feature.get("acceptance_criteria", [])),
+                expected_output='user_story.md en español con alcance, componentes y límites, flujo, contrato de API con ejemplos y errores, trazabilidad criterio-componente-verificación, supuestos y preguntas pendientes.',
+                agent=agent)
